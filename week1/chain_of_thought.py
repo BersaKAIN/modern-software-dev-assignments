@@ -8,7 +8,12 @@ load_dotenv()
 NUM_RUNS_TIMES = 5
 
 # TODO: Fill this in!
-YOUR_SYSTEM_PROMPT = ""
+YOUR_SYSTEM_PROMPT = """
+You are a math expert. You are given a problem and you need to solve it.
+List your thought process step by step.
+Once you have the answer, check your work and find a way to verify it's correct. 
+If it's not, revise your thought process and iterate.
+"""
 
 
 USER_PROMPT = """
