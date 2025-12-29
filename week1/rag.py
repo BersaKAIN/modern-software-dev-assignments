@@ -37,7 +37,7 @@ QUESTION = (
 
 
 # TODO: Fill this in!
-YOUR_SYSTEM_PROMPT = ""
+YOUR_SYSTEM_PROMPT = "You are a coding expert the helps the user to write code. Write concise and explainable code"
 
 
 # For this simple example
@@ -56,7 +56,10 @@ def YOUR_CONTEXT_PROVIDER(corpus: List[str]) -> List[str]:
 
     For example, return [] to simulate missing context, or [corpus[0]] to include the API docs.
     """
-    return []
+    result = []
+    for doc in corpus:
+        result.append(doc)
+    return result
 
 
 def make_user_prompt(question: str, context_docs: List[str]) -> str:
