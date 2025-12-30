@@ -32,6 +32,37 @@
       const $ = (sel) => document.querySelector(sel);
       const itemsEl = $('#items');
       const btn = $('#extract');
+      
+      async function loadAllActionItems() {
+        try {
+          const res = await fetch('/action-items');
+          if (!res.ok) throw new Error('Request failed');
+          const data = await res.json();
+          if (!data.items || data.items.length === 0) {
+            itemsEl.innerHTML = '<p class="muted">No action items found.</p>';
+            return;
+          }
+          itemsEl.innerHTML = data.items.map(it => (
+            `<div class="item"><input type="checkbox" data-id="${it.id}" ${it.done ? 'checked' : ''} /> <span>${it.text}</span></div>`
+          )).join('');
+          itemsEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', async (e) => {
+              const id = e.target.getAttribute('data-id');
+              await fetch(`/action-items/${id}/done`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ done: e.target.checked }),
+              });
+              // Reload all items after marking done to reflect changes
+              await loadAllActionItems();
+            });
+          });
+        } catch (err) {
+          console.error(err);
+          itemsEl.textContent = 'Error loading action items: ' + err.message;
+        }
+      }
+      
       btn.addEventListener('click', async () => {
         const text = $('#text').value;
         const save = $('#save_note').checked;
@@ -44,28 +75,16 @@
           });
           if (!res.ok) throw new Error('Request failed');
           const data = await res.json();
-          if (!data.items || data.items.length === 0) {
-            itemsEl.innerHTML = '<p class="muted">No action items found.</p>';
-            return;
-          }
-          itemsEl.innerHTML = data.items.map(it => (
-            `<div class="item"><input type="checkbox" data-id="${it.id}" /> <span>${it.text}</span></div>`
-          )).join('');
-          itemsEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            cb.addEventListener('change', async (e) => {
-              const id = e.target.getAttribute('data-id');
-              await fetch(`/action-items/${id}/done`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ done: e.target.checked }),
-              });
-            });
-          });
+          // After extraction, load all action items to show aggregated results
+          await loadAllActionItems();
         } catch (err) {
           console.error(err);
           itemsEl.textContent = 'Error extracting items';
         }
       });
+      
+      // Load all action items on page load
+      loadAllActionItems();
 
     </script>
   </body>
