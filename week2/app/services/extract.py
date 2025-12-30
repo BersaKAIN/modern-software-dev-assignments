@@ -80,9 +80,6 @@ def extract_action_items_llm(text: str) -> list[str]:
     Use an LLM (via ollama) to extract action items from the input text.
     Returns a list of action item strings.
     """
-    # Early return for empty input
-    if not text or not text.strip():
-        return []
     
     # Define the system and user prompt
     system_prompt = (
@@ -92,9 +89,21 @@ def extract_action_items_llm(text: str) -> list[str]:
         "If the input text does not contain any action items, return an empty list. "
         "If the input is empty or blank, return an empty list."
     )
+    
+    
+    # This prompt has led to hallucination over empty input of text.
+    # user_prompt = (
+    #     f"Extract all action items from the following notes:\n\n{text}\n\n"
+    #     "Return the action items as a list of Action objects, each with an 'action' field."
+    # )
+    
+    # A clearer XML style delimiter makes it clearer for LLM to understand when the input is empty. 
     user_prompt = (
-        f"Extract all action items from the following notes:\n\n{text}\n\n"
-        "Return the action items as a list of Action objects, each with an 'action' field."
+        "Extract action items from the content inside the <notes> tags.\n"
+        "Return a JSON object with a list of actions.\n\n"
+        "<notes>\n"
+        f"{text}\n"
+        "</notes>"
     )
 
     # Call ollama API with format parameter
@@ -105,7 +114,8 @@ def extract_action_items_llm(text: str) -> list[str]:
             {"role": "user", "content": user_prompt},
         ],
         format=ActionItemsResponse.model_json_schema(),
-        options={"temperature": 0.3},
+        # Temperature to 0.0 to avoid hallucination.
+        options={"temperature": 0.0},
     )
     
     # Parse the response using Pydantic
