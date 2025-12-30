@@ -22,7 +22,15 @@ For each exercise, please include what prompts you used to generate the answer, 
 ### Exercise 1: Scaffold a New Feature
 Prompt: 
 ```
-TODO
+Write a function extract_action_items_llm that takes a string as input.
+
+It should use ollama to call an underlying LLM and extract the action items.
+The items could use
+1. Delimiters like *, -,
+2. Delimiters like 1., 2. etc.
+3. It could have indicate an item like TODO, action, next
+
+Return a list of strings, each representing an action item.
 ``` 
 
 Generated Code Snippets:
@@ -33,7 +41,11 @@ TODO: List all modified code files with the relevant line numbers.
 ### Exercise 2: Add Unit Tests
 Prompt: 
 ```
-TODO
+write a test to test in @week2/app/services/extract.py 's extract_action_items_llm
+
+Prepare inputs of a number of cases:
+1. Write tests where notes consists of items delimited by `-`, `*`, `<number>`
+2. Write tests where there are multiple of notes inputs, each taking different formats.
 ``` 
 
 Generated Code Snippets:

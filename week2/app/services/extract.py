@@ -7,8 +7,18 @@ import json
 from typing import Any
 from ollama import chat
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
+
+
+class Action(BaseModel):
+    action: str
+
+
+class ActionItemsResponse(BaseModel):
+    actions: list[Action]
+
 
 BULLET_PREFIX_PATTERN = re.compile(r"^\s*([-*•]|\d+\.)\s+")
 KEYWORD_PREFIXES = (
@@ -64,6 +74,45 @@ def extract_action_items(text: str) -> List[str]:
         seen.add(lowered)
         unique.append(item)
     return unique
+
+def extract_action_items_llm(text: str) -> list[str]:
+    """
+    Use an LLM (via ollama) to extract action items from the input text.
+    Returns a list of action item strings.
+    """
+    # Early return for empty input
+    if not text or not text.strip():
+        return []
+    
+    # Define the system and user prompt
+    system_prompt = (
+        "You are an assistant that extracts action items from meeting notes, "
+        "regardless of how the action items are formatted. "
+        "Action items can be delimited by '-', '*', numbers, or preceded by words like TODO, action, or next. "
+        "If the input text does not contain any action items, return an empty list. "
+        "If the input is empty or blank, return an empty list."
+    )
+    user_prompt = (
+        f"Extract all action items from the following notes:\n\n{text}\n\n"
+        "Return the action items as a list of Action objects, each with an 'action' field."
+    )
+
+    # Call ollama API with format parameter
+    response = chat(
+        model="llama3.1:8b",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        format=ActionItemsResponse.model_json_schema(),
+        options={"temperature": 0.3},
+    )
+    
+    # Parse the response using Pydantic
+    action_items_response = ActionItemsResponse.model_validate_json(response.message.content)
+    
+    # Extract action strings from Action objects
+    return [action.action for action in action_items_response.actions]
 
 
 def _looks_imperative(sentence: str) -> bool:
