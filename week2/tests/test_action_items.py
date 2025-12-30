@@ -5,7 +5,24 @@ from fastapi.testclient import TestClient
 
 
 def test_extract_action_items_without_saving_note(client: TestClient):
-    """Test extracting action items without saving as a note."""
+    """
+    Test extracting action items from text without saving the text as a note.
+    
+    Scenario: User provides text with action items (bullets, checkboxes, numbered lists)
+    and sets save_note=False.
+    
+    Success conditions:
+    - Returns 200 status code
+    - note_id is None (no note was created)
+    - Action items are extracted and returned with proper structure
+    - All action items have note_id=None and done=False
+    
+    Failure conditions:
+    - Non-200 status code
+    - note_id is not None
+    - Action items are missing or incorrectly extracted
+    - Action item structure is invalid
+    """
     text = """
     Notes from meeting:
     - [ ] Set up database
@@ -41,7 +58,24 @@ def test_extract_action_items_without_saving_note(client: TestClient):
 
 
 def test_extract_action_items_with_saving_note(client: TestClient):
-    """Test extracting action items and saving the text as a note."""
+    """
+    Test extracting action items from text and saving the text as a note.
+    
+    Scenario: User provides text with action items and sets save_note=True.
+    
+    Success conditions:
+    - Returns 200 status code
+    - note_id is not None (a note was created)
+    - Action items are extracted and linked to the created note
+    - The note can be retrieved and contains the original text
+    - All action items have the correct note_id
+    
+    Failure conditions:
+    - Non-200 status code
+    - note_id is None
+    - Action items are not linked to the note
+    - Note cannot be retrieved or has incorrect content
+    """
     text = """
     Meeting notes:
     - Review code
@@ -71,7 +105,19 @@ def test_extract_action_items_with_saving_note(client: TestClient):
 
 
 def test_extract_action_items_empty_text(client: TestClient):
-    """Test extracting action items with empty text (should fail validation)."""
+    """
+    Test extracting action items with empty text string.
+    
+    Scenario: User provides an empty string for the text field.
+    
+    Success conditions:
+    - Returns 422 status code (validation error)
+    - Request is rejected before processing
+    
+    Failure conditions:
+    - Returns 200 status code (should not process empty text)
+    - Action items are extracted from empty text
+    """
     response = client.post(
         "/action-items/extract",
         json={"text": "", "save_note": False},
@@ -81,7 +127,19 @@ def test_extract_action_items_empty_text(client: TestClient):
 
 
 def test_extract_action_items_missing_text(client: TestClient):
-    """Test extracting action items with missing text field (should fail validation)."""
+    """
+    Test extracting action items with missing required text field.
+    
+    Scenario: User sends request without the required 'text' field in the JSON payload.
+    
+    Success conditions:
+    - Returns 422 status code (validation error)
+    - Request is rejected due to missing required field
+    
+    Failure conditions:
+    - Returns 200 status code (should not process without text)
+    - Request is processed without the text field
+    """
     response = client.post(
         "/action-items/extract",
         json={"save_note": False},
@@ -91,7 +149,21 @@ def test_extract_action_items_missing_text(client: TestClient):
 
 
 def test_extract_action_items_default_save_note(client: TestClient):
-    """Test that save_note defaults to False when not provided."""
+    """
+    Test that save_note parameter defaults to False when not provided.
+    
+    Scenario: User sends request without specifying the save_note field.
+    
+    Success conditions:
+    - Returns 200 status code
+    - note_id is None (defaults to not saving note)
+    - Action items are extracted successfully
+    
+    Failure conditions:
+    - Returns non-200 status code
+    - note_id is not None (should default to False)
+    - Request fails due to missing save_note field
+    """
     text = "Some notes with - action item"
     
     response = client.post(
@@ -105,7 +177,21 @@ def test_extract_action_items_default_save_note(client: TestClient):
 
 
 def test_list_action_items_empty(client: TestClient):
-    """Test listing action items when none exist."""
+    """
+    Test listing action items when no action items exist in the database.
+    
+    Scenario: Database is empty, user requests list of all action items.
+    
+    Success conditions:
+    - Returns 200 status code
+    - Returns empty list in items array
+    - Response structure is valid
+    
+    Failure conditions:
+    - Non-200 status code
+    - Returns non-empty list when database is empty
+    - Invalid response structure
+    """
     response = client.get("/action-items")
     
     assert response.status_code == 200
@@ -114,7 +200,23 @@ def test_list_action_items_empty(client: TestClient):
 
 
 def test_list_action_items_with_data(client: TestClient):
-    """Test listing all action items."""
+    """
+    Test listing all action items when multiple action items exist.
+    
+    Scenario: Multiple action items exist in database, user requests list without filters.
+    
+    Success conditions:
+    - Returns 200 status code
+    - Returns all action items
+    - Items are ordered by ID descending (newest first)
+    - Response structure is valid
+    
+    Failure conditions:
+    - Non-200 status code
+    - Missing action items in response
+    - Incorrect ordering (not descending by ID)
+    - Invalid response structure
+    """
     # Create some action items
     text1 = "- First action item"
     text2 = "- Second action item"
@@ -134,7 +236,23 @@ def test_list_action_items_with_data(client: TestClient):
 
 
 def test_list_action_items_filtered_by_note_id(client: TestClient):
-    """Test listing action items filtered by note_id."""
+    """
+    Test listing action items filtered by a specific note_id.
+    
+    Scenario: Action items exist both linked and unlinked to notes, user filters by note_id.
+    
+    Success conditions:
+    - Returns 200 status code
+    - Returns only action items linked to the specified note_id
+    - Does not return action items linked to other notes or unlinked items
+    - All returned items have the correct note_id
+    
+    Failure conditions:
+    - Non-200 status code
+    - Returns action items not linked to the specified note_id
+    - Missing action items that should be included
+    - Filtering logic is incorrect
+    """
     # Create a note with action items
     text = """
     Meeting notes:
@@ -168,7 +286,21 @@ def test_list_action_items_filtered_by_note_id(client: TestClient):
 
 
 def test_list_action_items_filtered_by_nonexistent_note_id(client: TestClient):
-    """Test listing action items filtered by a note_id that doesn't exist."""
+    """
+    Test listing action items filtered by a note_id that doesn't exist.
+    
+    Scenario: User filters action items by a note_id that has no associated action items.
+    
+    Success conditions:
+    - Returns 200 status code
+    - Returns empty list (no action items match the filter)
+    - Does not raise an error for non-existent note_id
+    
+    Failure conditions:
+    - Non-200 status code (should handle gracefully)
+    - Returns action items when none should match
+    - Raises exception for non-existent note_id
+    """
     response = client.get("/action-items?note_id=99999")
     
     assert response.status_code == 200
@@ -177,7 +309,23 @@ def test_list_action_items_filtered_by_nonexistent_note_id(client: TestClient):
 
 
 def test_mark_action_item_done(client: TestClient):
-    """Test marking an action item as done."""
+    """
+    Test marking an existing action item as done.
+    
+    Scenario: User marks an action item as completed by setting done=True.
+    
+    Success conditions:
+    - Returns 200 status code
+    - Response contains correct action item id and done=True
+    - Action item is updated in database (verified by listing)
+    - Status persists when retrieved again
+    
+    Failure conditions:
+    - Non-200 status code
+    - Action item is not updated in database
+    - Response contains incorrect id or done status
+    - Status does not persist
+    """
     # Create an action item
     text = "- Complete this task"
     extract_response = client.post(
@@ -206,7 +354,23 @@ def test_mark_action_item_done(client: TestClient):
 
 
 def test_mark_action_item_not_done(client: TestClient):
-    """Test marking an action item as not done."""
+    """
+    Test marking an action item as not done (unmarking a completed item).
+    
+    Scenario: User marks a previously completed action item as incomplete by setting done=False.
+    
+    Success conditions:
+    - Returns 200 status code
+    - Response contains correct action item id and done=False
+    - Action item status is updated from done to not done
+    - Status persists when retrieved again
+    
+    Failure conditions:
+    - Non-200 status code
+    - Action item status is not updated
+    - Response contains incorrect status
+    - Cannot change status from done to not done
+    """
     # Create an action item
     text = "- Complete this task"
     extract_response = client.post(
@@ -241,7 +405,21 @@ def test_mark_action_item_not_done(client: TestClient):
 
 
 def test_mark_action_item_done_default_value(client: TestClient):
-    """Test that done defaults to True when not provided."""
+    """
+    Test that the done parameter defaults to True when not provided in the request.
+    
+    Scenario: User marks action item as done without specifying the done field.
+    
+    Success conditions:
+    - Returns 200 status code
+    - done defaults to True (action item is marked as done)
+    - Response reflects the default value
+    
+    Failure conditions:
+    - Non-200 status code
+    - done does not default to True
+    - Request fails due to missing done field
+    """
     # Create an action item
     text = "- Complete this task"
     extract_response = client.post(
@@ -263,7 +441,22 @@ def test_mark_action_item_done_default_value(client: TestClient):
 
 
 def test_mark_action_item_done_not_found(client: TestClient):
-    """Test marking a non-existent action item as done (should return 404)."""
+    """
+    Test marking a non-existent action item as done.
+    
+    Scenario: User attempts to mark an action item that doesn't exist in the database.
+    
+    Success conditions:
+    - Returns 404 status code (not found)
+    - Error response contains detail message with the action item id
+    - No action item is created or modified
+    
+    Failure conditions:
+    - Returns 200 status code (should not succeed)
+    - Returns different error code
+    - Creates or modifies an action item
+    - Error message is missing or incorrect
+    """
     response = client.post(
         "/action-items/99999/done",
         json={"done": True},
